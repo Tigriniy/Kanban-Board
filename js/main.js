@@ -73,113 +73,120 @@ const app = new Vue({
             </div>
         </div>
     `,
-{
-    planned: [],
-        inProgress: [],
-    testing: [],
-    completed: []
-},
-methods: {
-    loadTasks() {
-        const saved = localStorage.getItem('kanbanTasks');
-        if (saved) {
-            const data = JSON.parse(saved);
-            this.planned = data.planned || [];
-            this.inProgress = data.inProgress || [];
-            this.testing = data.testing || [];
-            this.completed = data.completed || [];
-        }
-    },
-    saveTasks() {
-        const data = {
-            planned: this.planned,
-            inProgress: this.inProgress,
-            testing: this.testing,
-            completed: this.completed
+    data() {
+        return {
+            planned: [],
+            inProgress: [],
+            testing: [],
+            completed: []
         };
-        localStorage.setItem('kanbanTasks', JSON.stringify(data));
     },
-    addTask(column) {
-        const title = prompt('Заголовок задачи:');
-        const description = prompt('Описание:');
-        const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):');
-
-        if (title && description && deadline) {
-            const task = {
-                id: Date.now(),
-                title: title,
-                description: description,
-                createdAt: new Date(),
-                deadline: new Date(deadline),
-                updatedAt: null,
-                completedAt: null,
-                isOverdue: false
+    methods: {
+        loadTasks() {
+            const saved = localStorage.getItem('kanbanTasks');
+            if (saved) {
+                const data = JSON.parse(saved);
+                this.planned = data.planned || [];
+                this.inProgress = data.inProgress || [];
+                this.testing = data.testing || [];
+                this.completed = data.completed || [];
+            }
+        },
+        saveTasks() {
+            const data = {
+                planned: this.planned,
+                inProgress: this.inProgress,
+                testing: this.testing,
+                completed: this.completed
             };
+            localStorage.setItem('kanbanTasks', JSON.stringify(data));
+        },
+        addTask(column) {
+            const title = prompt('Заголовок задачи:');
+            const description = prompt('Описание:');
+            const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):');
 
-            this[column].push(task);
-            this.saveTasks();
-        }
-    },
-    editTask(task, column) {
-        const title = prompt('Заголовок задачи:', task.title);
-        const description = prompt('Описание:', task.description);
-        const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):', this.formatDate(task.deadline));
+            if (title && description && deadline) {
+                const task = {
+                    id: Date.now(),
+                    title: title,
+                    description: description,
+                    createdAt: new Date().toISOString(),
+                    deadline: new Date(deadline).toISOString(),
+                    updatedAt: null,
+                    completedAt: null,
+                    isOverdue: false
+                };
 
-        if (title && description && deadline) {
-            const index = this[column].findIndex(t => t.id === task.id);
-            if (index !== -1) {
-                this[column][index].title = title;
-                this[column][index].description = description;
-                this[column][index].deadline = new Date(deadline);
-                this[column][index].updatedAt = new Date();
+                this[column].push(task);
                 this.saveTasks();
             }
-        }
-    },
-    deleteTask(taskId, column) {
-        if (confirm('Удалить задачу?')) {
-            const index = this[column].findIndex(t => t.id === taskId);
-            if (index !== -1) {
-                this[column].splice(index, 1);
+        },
+        editTask(task, column) {
+            const title = prompt('Заголовок задачи:', task.title);
+            const description = prompt('Описание:', task.description);
+
+            const currentDeadline = new Date(task.deadline).toISOString().split('T')[0];
+            const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):', currentDeadline);
+
+            if (title && description && deadline) {
+                const index = this[column].findIndex(t => t.id === task.id);
+                if (index !== -1) {
+                    const updatedTask = { ...this[column][index],
+                        title,
+                        description,
+                        deadline: new Date(deadline).toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    this[column].splice(index, 1, updatedTask);
+                    this.saveTasks();
+                }
+            }
+        },
+        deleteTask(taskId, column) {
+            if (confirm('Удалить задачу?')) {
+                this[column] = this[column].filter(t => t.id !== taskId);
                 this.saveTasks();
             }
-        }
-    },
-    moveTask(task, from, to) {
-        const index = this[from].findIndex(t => t.id === task.id);
-        if (index !== -1) {
-            const movedTask = this[from].splice(index, 1)[0];
-
-            if (to === 'completed') {
-                movedTask.completedAt = new Date();
-                movedTask.isOverdue = movedTask.deadline < new Date();
-            }
-
-            this[to].push(movedTask);
-            this.saveTasks();
-        }
-    },
-    returnTask(task) {
-        const reason = prompt('Причина возврата:');
-        if (reason) {
-            const index = this.testing.findIndex(t => t.id === task.id);
+        },
+        moveTask(task, from, to) {
+            const index = this[from].findIndex(t => t.id === task.id);
             if (index !== -1) {
-                const returnedTask = this.testing.splice(index, 1)[0];
-                this.inProgress.push(returnedTask);
+                const movedTask = this[from].splice(index, 1)[0];
+
+                if (to === 'completed') {
+                    movedTask.completedAt = new Date().toISOString();
+                    // Сравнение дат
+                    movedTask.isOverdue = new Date(movedTask.deadline) < new Date();
+                }
+
+                this[to].push(movedTask);
                 this.saveTasks();
             }
+        },
+        returnTask(task) {
+            const reason = prompt('Причина возврата:');
+            if (reason) {
+                const index = this.testing.findIndex(t => t.id === task.id);
+                if (index !== -1) {
+                    const returnedTask = this.testing.splice(index, 1)[0];
+                    // Можно добавить причину в описание
+                    returnedTask.description += `\n(Возврат: ${reason})`;
+                    this.inProgress.push(returnedTask);
+                    this.saveTasks();
+                }
+            }
+        },
+        isOverdue(task) {
+            return task.isOverdue;
+        },
+        formatDate(date) {
+            if (!date) return '—';
+            const d = new Date(date);
+            return isNaN(d.getTime()) ? 'Неверная дата' : d.toLocaleDateString('ru-RU');
         }
     },
-    isOverdue(task) {
-        return task.isOverdue;
-    },
-    formatDate(date) {
-        if (!date) return '';
-        const d = new Date(date);
-        return d.toLocaleDateString('ru-RU');
+    mounted() {
+        this.loadTasks();
     }
-},
-mounted() {
-    this.loadTasks();
-}
 });
