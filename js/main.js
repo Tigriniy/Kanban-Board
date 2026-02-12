@@ -15,7 +15,8 @@ const app = new Vue({
                             <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                             <div class="card-actions">
                                 <button @click="editTask(task, 'planned')"></button>
-                                <button @click="deleteTask(task, 'planned')"></button>/
+                                <button @click="deleteTask(task.id, 'planned')"></button>
+                                <button @click="moveTask(task, 'planned', 'inProgress')"> В работу</button>
                             </div>
                         </div>
                     </div>
@@ -68,17 +69,17 @@ const app = new Vue({
     `,
 {
     planned: [],
-    inProgress: [],
+        inProgress: [],
     testing: [],
     completed: []
 },
 methods: {
-    addTask(column)
-    {
+    addTask(column) {
         const title = prompt('Заголовок задачи:');
         const description = prompt('Описание:');
+        const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):');
 
-        if (title && description) {
+        if (title && description && deadline) {
             const task = {
                 id: Date.now(),
                 title: title,
@@ -92,11 +93,11 @@ methods: {
         }
     },
     editTask(task, column) {
-    const title = prompt('Заголовок задачи:', task.title);
-    const description = prompt('Описание:', task.description);
-    const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):', this.formatDate(task,deadline));
+        const title = prompt('Заголовок задачи:', task.title);
+        const description = prompt('Описание:', task.description);
+        const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):', this.formatDate(task.deadline));
 
-        if(title && description && deadline) {
+        if (title && description && deadline) {
             const index = this[column].findIndex(t => t.id === task.id);
             if (index !== -1) {
                 this[column][index].title = title;
@@ -107,5 +108,24 @@ methods: {
         }
     },
     deleteTask(taskId, column) {
+        if (confirm('Удалить задачу?')) {
+            const index = this[column].findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                this[column].splice(index, 1);
+            }
+        }
+    },
+    moveTask(task, from, to) {
+        const index = this[from].findIndex(t => t.id === task.id);
+        if (index !== -1) {
+            const movedTask = this[from].splice(index, 1)[0];
+            this[to].push(movedTask);
+        }
+    },
+    formatDate(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString('ru-RU');
     }
 }
+});
