@@ -11,6 +11,8 @@ const app = new Vue({
                         <div class="card" v-for="task in planned" :key="task.id">
                             <h3>{{ task.title }}</h3>
                             <p>{{ task.description }}</p>
+                            <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
+                            <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                         </div>
                     </div>
                     <button @click="addTask('planned')">+ Добавить</button>
@@ -22,6 +24,8 @@ const app = new Vue({
                         <div class="card" v-for="task in inProgress" :key="task.id">
                             <h3>{{ task.title }}</h3>
                             <p>{{ task.description }}</p>
+                            <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
+                            <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                         </div>
                     </div>
                 </div>
@@ -32,6 +36,8 @@ const app = new Vue({
                         <div class="card" v-for="task in testing" :key="task.id">
                             <h3>{{ task.title }}</h3>
                             <p>{{ task.description }}</p>
+                            <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
+                            <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                         </div>
                     </div>
                 </div>
@@ -42,6 +48,8 @@ const app = new Vue({
                         <div class="card" v-for="task in completed" :key="task.id">
                             <h3>{{ task.title }}</h3>
                             <p>{{ task.description }}</p>
+                            <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
+                            <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                         </div>
                     </div>
                 </div>
@@ -50,12 +58,13 @@ const app = new Vue({
     `,
 {
     planned: [],
-        inProgress: [],
+    inProgress: [],
     testing: [],
     completed: []
 },
 methods: {
-    addTask(column) {
+    addTask(column)
+    {
         const title = prompt('Заголовок задачи:');
         const description = prompt('Описание:');
 
@@ -63,3 +72,8 @@ methods: {
             const task = {
                 id: Date.now(),
                 title: title,
+                description: description,
+                createdAt: new Date(),
+                deadline: new Date(deadline),
+                updatedAt: null
+            };
