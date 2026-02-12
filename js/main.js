@@ -64,6 +64,9 @@ const app = new Vue({
                             <p>{{ task.description }}</p>
                             <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
                             <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
+                            <p class="meta" :class="{ overdue: isOverdue(task) }">
+                                Status: {{ isOverdue(task) ? 'OVERDUE' : 'COMPLETED ON TIME' }}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -89,7 +92,9 @@ methods: {
                 description: description,
                 createdAt: new Date(),
                 deadline: new Date(deadline),
-                updatedAt: null
+                updatedAt: null,
+                completedAt: null,
+                isOverdue: false
             };
 
             this[column].push(task);
@@ -122,6 +127,12 @@ methods: {
         const index = this[from].findIndex(t => t.id === task.id);
         if (index !== -1) {
             const movedTask = this[from].splice(index, 1)[0];
+
+            if (to === 'completed') {
+                movedTask.completedAt = new Date();
+                movedTask.isOverdue = movedTask.deadline < new Date();
+            }
+
             this[to].push(movedTask);
         }
     },
@@ -134,6 +145,9 @@ methods: {
                 this.inProgress.push(returnedTask);
             }
         }
+    },
+    isOverdue(task) {
+        return task.isOverdue;
     },
     formatDate(date) {
         if (!date) return '';
