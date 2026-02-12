@@ -33,6 +33,7 @@ const app = new Vue({
                             <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                             <div class="card-actions">
                                 <button @click="editTask(task, 'inProgress')"></button>
+                                <button @click="deleteTask(task, 'inProgress', 'testing')">Тестирование</button>/
                             </div>
                         </div>
                     </div>
