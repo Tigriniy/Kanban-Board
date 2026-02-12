@@ -14,13 +14,13 @@ const app = new Vue({
                             <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
                             <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                             <div class="card-actions">
-                                <button @click="editTask(task, 'planned')"></button>
-                                <button @click="deleteTask(task.id, 'planned')"></button>
-                                <button @click="moveTask(task, 'planned', 'inProgress')"> В работу</button>
+                                <button @click="editTask(task, 'planned')">Edit</button>
+                                <button @click="deleteTask(task.id, 'planned')">Delete</button>
+                                <button @click="moveTask(task, 'planned', 'inProgress')">To Work</button>
                             </div>
                         </div>
                     </div>
-                    <button @click="addTask('planned')">+ Добавить</button>
+                    <button @click="addTask('planned')">Add Task</button>
                 </div>
                 
                 <div class="column">
@@ -32,8 +32,8 @@ const app = new Vue({
                             <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
                             <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                             <div class="card-actions">
-                                <button @click="editTask(task, 'inProgress')"></button>
-                                <button @click="deleteTask(task, 'inProgress', 'testing')">Тестирование</button>/
+                                <button @click="editTask(task, 'inProgress')">Edit</button>
+                                <button @click="moveTask(task, 'inProgress', 'testing')">To Testing</button>
                             </div>
                         </div>
                     </div>
@@ -48,7 +48,9 @@ const app = new Vue({
                             <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
                             <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
                             <div class="card-actions">
-                                <button @click="editTask(task, 'testing')"></button>
+                                <button @click="editTask(task, 'testing')">Edit</button>
+                                <button @click="moveTask(task, 'testing', 'completed')">Complete</button>
+                                <button @click="returnTask(task)">Return to Work</button>
                             </div>
                         </div>
                     </div>
@@ -121,6 +123,16 @@ methods: {
         if (index !== -1) {
             const movedTask = this[from].splice(index, 1)[0];
             this[to].push(movedTask);
+        }
+    },
+    returnTask(task) {
+        const reason = prompt('Причина возврата:');
+        if (reason) {
+            const index = this.testing.findIndex(t => t.id === task.id);
+            if (index !== -1) {
+                const returnedTask = this.testing.splice(index, 1)[0];
+                this.inProgress.push(returnedTask);
+            }
         }
     },
     formatDate(date) {
