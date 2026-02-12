@@ -80,6 +80,25 @@ const app = new Vue({
     completed: []
 },
 methods: {
+    loadTasks() {
+        const saved = localStorage.getItem('kanbanTasks');
+        if (saved) {
+            const data = JSON.parse(saved);
+            this.planned = data.planned || [];
+            this.inProgress = data.inProgress || [];
+            this.testing = data.testing || [];
+            this.completed = data.completed || [];
+        }
+    },
+    saveTasks() {
+        const data = {
+            planned: this.planned,
+            inProgress: this.inProgress,
+            testing: this.testing,
+            completed: this.completed
+        };
+        localStorage.setItem('kanbanTasks', JSON.stringify(data));
+    },
     addTask(column) {
         const title = prompt('Заголовок задачи:');
         const description = prompt('Описание:');
@@ -98,6 +117,7 @@ methods: {
             };
 
             this[column].push(task);
+            this.saveTasks();
         }
     },
     editTask(task, column) {
@@ -112,6 +132,7 @@ methods: {
                 this[column][index].description = description;
                 this[column][index].deadline = new Date(deadline);
                 this[column][index].updatedAt = new Date();
+                this.saveTasks();
             }
         }
     },
@@ -120,6 +141,7 @@ methods: {
             const index = this[column].findIndex(t => t.id === taskId);
             if (index !== -1) {
                 this[column].splice(index, 1);
+                this.saveTasks();
             }
         }
     },
@@ -134,6 +156,7 @@ methods: {
             }
 
             this[to].push(movedTask);
+            this.saveTasks();
         }
     },
     returnTask(task) {
@@ -143,6 +166,7 @@ methods: {
             if (index !== -1) {
                 const returnedTask = this.testing.splice(index, 1)[0];
                 this.inProgress.push(returnedTask);
+                this.saveTasks();
             }
         }
     },
@@ -154,5 +178,8 @@ methods: {
         const d = new Date(date);
         return d.toLocaleDateString('ru-RU');
     }
+},
+mounted() {
+    this.loadTasks();
 }
 });
