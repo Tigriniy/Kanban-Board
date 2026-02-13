@@ -57,7 +57,7 @@ Vue.component('board-column', {
                     @return="$emit('return', task.id)"
                 />
             </div>
-            <button v-if="column === 'planned'" @click="$emit('add')">+ Добавить задачу</button>
+            <button v-if="column === 'planned'" @click="$emit('add')"> Добавить задачу</button>
         </div>
     `
 })
@@ -106,7 +106,7 @@ Vue.component('task-modal', {
                 nextWeek.setDate(nextWeek.getDate() + 7)
                 this.title = ''
                 this.description = ''
-                this.deadline = nextWeek.toISOString().slice(0, 16)
+                this.deadline = ''
                 this.reason = ''
             }
         }
