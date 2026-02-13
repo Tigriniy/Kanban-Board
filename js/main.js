@@ -1,192 +1,319 @@
-const app = new Vue({
-    el: '#app',
+Vue.component('task-card', {
+    props: ['task', 'column'],
     template: `
-        <div class="app">
-            <h1>Kanban Board</h1>
-            
-            <div class="board">
-                <div class="column">
-                    <h2>Запланированные задачи</h2>
-                    <div class="cards">
-                        <div class="card" v-for="task in planned" :key="task.id">
-                            <h3>{{ task.title }}</h3>
-                            <p>{{ task.description }}</p>
-                            <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
-                            <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
-                            <div class="card-actions">
-                                <button @click="editTask(task, 'planned')">Edit</button>
-                                <button @click="deleteTask(task.id, 'planned')">Delete</button>
-                                <button @click="moveTask(task, 'planned', 'inProgress')">To Work</button>
-                            </div>
-                        </div>
-                    </div>
-                    <button @click="addTask('planned')">Add Task</button>
+        <div class="card">
+            <h3>{{ task.title }}</h3>
+            <p>{{ task.description }}</p>
+            <div class="meta">
+                <div>Создана: {{ formatDate(task.createdAt) }}</div>
+                <div v-if="task.updatedAt">Изменена: {{ formatDate(task.updatedAt) }}</div>
+                <div>Дедлайн: {{ formatDate(task.deadline) }}</div>
+                <div v-if="task.completedAt">Выполнена: {{ formatDate(task.completedAt) }}</div>
+                <div v-if="task.returnReason">Причина возврата: {{ task.returnReason }}</div>
+            </div>
+            <div class="actions">
+                <button v-if="column !== 'completed'" @click="$emit('edit', task)">Редактировать</button>
+                <button v-if="column === 'planned'" @click="$emit('delete')">Удалить</button>
+                <button v-if="column === 'planned'" @click="$emit('toWork')">В работу</button>
+                <button v-if="column === 'inProgress'" @click="$emit('toTest')">На тестирование</button>
+                <button v-if="column === 'testing'" @click="$emit('complete')">Завершить</button>
+                <button v-if="column === 'testing'" @click="$emit('return')">Вернуть</button>
+                <div v-if="column === 'completed'" :class="task.isOverdue ? 'overdue' : 'done'">
+                    {{ task.isOverdue ? 'ПРОСРОЧЕНА' : 'ВЫПОЛНЕНА В СРОК' }}
                 </div>
+            </div>
+        </div>
+    `,
+    methods: {
+        formatDate(date) {
+            if (!date) return '';
+            return new Date(date).toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            })
+        }
+    }
+})
+
+Vue.component('board-column', {
+    props: ['title', 'column', 'tasks'],
+    template: `
+        <div class="column">
+            <h2>{{ title }}</h2>
+            <div class="cards">
+                <task-card 
+                    v-for="task in tasks" 
+                    :key="task.id" 
+                    :task="task" 
+                    :column="column"
+                    @edit="$emit('edit', {task: task, column: column})"
+                    @delete="$emit('delete', {id: task.id, column: column})"
+                    @toWork="$emit('move', {task: task, from: column, to: 'inProgress'})"
+                    @toTest="$emit('move', {task: task, from: column, to: 'testing'})"
+                    @complete="$emit('move', {task: task, from: column, to: 'completed'})"
+                    @return="$emit('return', task.id)"
+                />
+            </div>
+            <button v-if="column === 'planned'" @click="$emit('add')">+ Добавить задачу</button>
+        </div>
+    `
+})
+
+Vue.component('task-modal', {
+    props: ['show', 'task', 'returnMode'],
+    template: `
+        <div class="modal" v-if="show">
+            <div class="modal-content">
+                <h3>{{ returnMode ? 'Возврат задачи в работу' : (task ? 'Редактировать задачу' : 'Новая задача') }}</h3>
+                <button class="close" @click="$emit('close')">x</button>
                 
-                <div class="column">
-                    <h2>Задачи в работе</h2>
-                    <div class="cards">
-                        <div class="card" v-for="task in inProgress" :key="task.id">
-                            <h3>{{ task.title }}</h3>
-                            <p>{{ task.description }}</p>
-                            <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
-                            <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
-                            <div class="card-actions">
-                                <button @click="editTask(task, 'inProgress')">Edit</button>
-                                <button @click="moveTask(task, 'inProgress', 'testing')">To Testing</button>
-                            </div>
-                        </div>
-                    </div>
+                <div v-if="!returnMode">
+                    <input v-model="title" placeholder="Заголовок задачи" required>
+                    <textarea v-model="description" placeholder="Описание задачи" required></textarea>
+                    <input type="datetime-local" v-model="deadline" required>
                 </div>
+                <textarea v-if="returnMode" v-model="reason" placeholder="Причина возврата" required></textarea>
                 
-                <div class="column">
-                    <h2>Тестирование</h2>
-                    <div class="cards">
-                        <div class="card" v-for="task in testing" :key="task.id">
-                            <h3>{{ task.title }}</h3>
-                            <p>{{ task.description }}</p>
-                            <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
-                            <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
-                            <div class="card-actions">
-                                <button @click="editTask(task, 'testing')">Edit</button>
-                                <button @click="moveTask(task, 'testing', 'completed')">Complete</button>
-                                <button @click="returnTask(task)">Return to Work</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="column">
-                    <h2>Выполненные задачи</h2>
-                    <div class="cards">
-                        <div class="card" v-for="task in completed" :key="task.id">
-                            <h3>{{ task.title }}</h3>
-                            <p>{{ task.description }}</p>
-                            <p class="meta">Создана: {{ formatDate(task.createdAt) }}</p>
-                            <p class="meta">Дедлайн: {{ formatDate(task.deadline) }}</p>
-                            <p class="meta" :class="{ overdue: isOverdue(task) }">
-                                Status: {{ isOverdue(task) ? 'OVERDUE' : 'COMPLETED ON TIME' }}
-                            </p>
-                        </div>
-                    </div>
+                <div class="buttons">
+                    <button @click="save" class="save-btn">
+                        {{ returnMode ? 'Вернуть в работу' : (task ? 'Сохранить' : 'Создать задачу') }}
+                    </button>
+                    <button @click="$emit('close')" class="cancel-btn">Отмена</button>
                 </div>
             </div>
         </div>
     `,
     data() {
         return {
-            planned: [],
-            inProgress: [],
-            testing: [],
-            completed: []
-        };
+            title: '',
+            description: '',
+            deadline: '',
+            reason: ''
+        }
+    },
+    watch: {
+        show(newValue) {
+            if (newValue && this.task) {
+                this.title = this.task.title
+                this.description = this.task.description
+                this.deadline = new Date(this.task.deadline).toISOString().slice(0, 16)
+                this.reason = ''
+            } else if (newValue && !this.task && !this.returnMode) {
+                const nextWeek = new Date()
+                nextWeek.setDate(nextWeek.getDate() + 7)
+                this.title = ''
+                this.description = ''
+                this.deadline = nextWeek.toISOString().slice(0, 16)
+                this.reason = ''
+            }
+        }
+    },
+    methods: {
+        save() {
+            if (this.returnMode) {
+                if (!this.reason.trim()) {
+                    alert('Укажите причину возврата!')
+                    return
+                }
+                this.$emit('saveReturn', this.reason.trim())
+            } else {
+                const trimmedTitle = this.title.trim()
+                const trimmedDescription = this.description.trim()
+
+                if (!trimmedTitle || !trimmedDescription || !this.deadline) {
+                    alert('Заполните все поля!')
+                    return
+                }
+
+                this.$emit('save', {
+                    title: trimmedTitle,
+                    description: trimmedDescription,
+                    deadline: new Date(this.deadline)
+                })
+            }
+        }
+    }
+})
+
+new Vue({
+    el: '#app',
+    template: `
+        <div class="app">
+            <h1>Доска задач</h1>
+            <div class="board">
+                <board-column 
+                    title="Запланированные задачи" 
+                    column="planned" 
+                    :tasks="planned"
+                    @add="openAddModal('planned')"
+                    @edit="openEditModal"
+                    @delete="deleteTask"
+                    @move="moveTask"
+                />
+                <board-column 
+                    title="Задачи в работе" 
+                    column="inProgress" 
+                    :tasks="inProgress"
+                    @edit="openEditModal"
+                    @move="moveTask"
+                />
+                <board-column 
+                    title="Тестирование" 
+                    column="testing" 
+                    :tasks="testing"
+                    @edit="openEditModal"
+                    @move="moveTask"
+                    @return="openReturnModal"
+                />
+                <board-column 
+                    title="Выполненные задачи" 
+                    column="completed" 
+                    :tasks="completed"
+                />
+            </div>
+            
+            <task-modal 
+                :show="showAddModal" 
+                :task="null" 
+                :returnMode="false"
+                @save="createTask" 
+                @close="closeAddModal"
+            />
+            <task-modal 
+                :show="showEditModal" 
+                :task="editingTask" 
+                :returnMode="false"
+                @save="updateTask" 
+                @close="closeEditModal"
+            />
+            <task-modal 
+                :show="showReturnModal" 
+                :task="null" 
+                :returnMode="true"
+                @saveReturn="returnTask" 
+                @close="closeReturnModal"
+            />
+        </div>
+    `,
+    data: {
+        planned: [],
+        inProgress: [],
+        testing: [],
+        completed: [],
+        showAddModal: false,
+        showEditModal: false,
+        showReturnModal: false,
+        editingTask: null,
+        returningTaskId: null,
+        currentColumn: null
     },
     methods: {
         loadTasks() {
-            const saved = localStorage.getItem('kanbanTasks');
+            const saved = localStorage.getItem('kanbanTasks')
             if (saved) {
-                const data = JSON.parse(saved);
-                this.planned = data.planned || [];
-                this.inProgress = data.inProgress || [];
-                this.testing = data.testing || [];
-                this.completed = data.completed || [];
+                const data = JSON.parse(saved)
+                this.planned = data.planned || []
+                this.inProgress = data.inProgress || []
+                this.testing = data.testing || []
+                this.completed = data.completed || []
             }
         },
         saveTasks() {
-            const data = {
+            localStorage.setItem('kanbanTasks', JSON.stringify({
                 planned: this.planned,
                 inProgress: this.inProgress,
                 testing: this.testing,
                 completed: this.completed
-            };
-            localStorage.setItem('kanbanTasks', JSON.stringify(data));
+            }))
         },
-        addTask(column) {
-            const title = prompt('Заголовок задачи:');
-            const description = prompt('Описание:');
-            const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):');
-
-            if (title && description && deadline) {
-                const task = {
-                    id: Date.now(),
-                    title: title,
-                    description: description,
-                    createdAt: new Date().toISOString(),
-                    deadline: new Date(deadline).toISOString(),
-                    updatedAt: null,
-                    completedAt: null,
-                    isOverdue: false
-                };
-
-                this[column].push(task);
-                this.saveTasks();
+        openAddModal(column) {
+            this.currentColumn = column
+            this.showAddModal = true
+        },
+        closeAddModal() {
+            this.showAddModal = false
+            this.currentColumn = null
+        },
+        createTask(taskData) {
+            this[this.currentColumn].push({
+                id: Date.now(),
+                title: taskData.title,
+                description: taskData.description,
+                createdAt: new Date(),
+                deadline: taskData.deadline,
+                updatedAt: null,
+                completedAt: null,
+                returnReason: null,
+                isOverdue: false
+            })
+            this.closeAddModal()
+            this.saveTasks()
+        },
+        openEditModal(data) {
+            this.editingTask = data.task
+            this.currentColumn = data.column
+            this.showEditModal = true
+        },
+        closeEditModal() {
+            this.showEditModal = false
+            this.editingTask = null
+            this.currentColumn = null
+        },
+        updateTask(taskData) {
+            const task = this[this.currentColumn].find(t => t.id === this.editingTask.id)
+            if (task) {
+                task.title = taskData.title
+                task.description = taskData.description
+                task.deadline = taskData.deadline
+                task.updatedAt = new Date()
             }
+            this.closeEditModal()
+            this.saveTasks()
         },
-        editTask(task, column) {
-            const title = prompt('Заголовок задачи:', task.title);
-            const description = prompt('Описание:', task.description);
-
-            const currentDeadline = new Date(task.deadline).toISOString().split('T')[0];
-            const deadline = prompt('Дедлайн (ГГГГ-ММ-ДД):', currentDeadline);
-
-            if (title && description && deadline) {
-                const index = this[column].findIndex(t => t.id === task.id);
-                if (index !== -1) {
-                    const updatedTask = { ...this[column][index],
-                        title,
-                        description,
-                        deadline: new Date(deadline).toISOString(),
-                        updatedAt: new Date().toISOString()
-                    };
-                    this[column].splice(index, 1, updatedTask);
-                    this.saveTasks();
-                }
-            }
-        },
-        deleteTask(taskId, column) {
+        deleteTask(data) {
             if (confirm('Удалить задачу?')) {
-                this[column] = this[column].filter(t => t.id !== taskId);
-                this.saveTasks();
+                this[data.column] = this[data.column].filter(t => t.id !== data.id)
+                this.saveTasks()
             }
         },
-        moveTask(task, from, to) {
-            const index = this[from].findIndex(t => t.id === task.id);
-            if (index !== -1) {
-                const movedTask = this[from].splice(index, 1)[0];
+        moveTask(data) {
+            const index = this[data.from].findIndex(t => t.id === data.task.id)
+            if (index === -1) return
 
-                if (to === 'completed') {
-                    movedTask.completedAt = new Date().toISOString();
-                    // Сравнение дат
-                    movedTask.isOverdue = new Date(movedTask.deadline) < new Date();
-                }
+            const task = this[data.from].splice(index, 1)[0]
 
-                this[to].push(movedTask);
-                this.saveTasks();
+            if (data.to === 'completed') {
+                task.completedAt = new Date()
+                task.isOverdue = new Date(task.deadline) < new Date()
             }
+
+            this[data.to].push(task)
+            this.saveTasks()
         },
-        returnTask(task) {
-            const reason = prompt('Причина возврата:');
-            if (reason) {
-                const index = this.testing.findIndex(t => t.id === task.id);
-                if (index !== -1) {
-                    const returnedTask = this.testing.splice(index, 1)[0];
-                    // Можно добавить причину в описание
-                    returnedTask.description += `\n(Возврат: ${reason})`;
-                    this.inProgress.push(returnedTask);
-                    this.saveTasks();
-                }
-            }
+        openReturnModal(taskId) {
+            this.returningTaskId = taskId
+            this.showReturnModal = true
         },
-        isOverdue(task) {
-            return task.isOverdue;
+        closeReturnModal() {
+            this.showReturnModal = false
+            this.returningTaskId = null
         },
-        formatDate(date) {
-            if (!date) return '—';
-            const d = new Date(date);
-            return isNaN(d.getTime()) ? 'Неверная дата' : d.toLocaleDateString('ru-RU');
+        returnTask(reason) {
+            const index = this.testing.findIndex(t => t.id === this.returningTaskId)
+            if (index === -1) return
+
+            const task = this.testing.splice(index, 1)[0]
+            task.returnReason = reason
+            task.updatedAt = new Date()
+            this.inProgress.push(task)
+            this.closeReturnModal()
+            this.saveTasks()
         }
     },
     mounted() {
-        this.loadTasks();
+        this.loadTasks()
     }
-});
+})
