@@ -102,8 +102,6 @@ Vue.component('task-modal', {
                 this.deadline = new Date(this.task.deadline).toISOString().slice(0, 16)
                 this.reason = ''
             } else if (newValue && !this.task && !this.returnMode) {
-                const nextWeek = new Date()
-                nextWeek.setDate(nextWeek.getDate() + 7)
                 this.title = ''
                 this.description = ''
                 this.deadline = ''
