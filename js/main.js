@@ -85,52 +85,55 @@ Vue.component('task-modal', {
             </div>
         </div>
     `,
-    data:{
-    title: '',
-        description: '',
-    deadline: '',
-    reason: ''
-},
-watch: {
-    show(newValue) {
-        if (newValue && this.task) {
-            this.title = this.task.title;
-            this.description = this.task.description;
-            this.deadline = new Date(this.task.deadline).toISOString().slice(0, 16);
-            this.reason = '';
-        } else if (newValue && !this.task && !this.returnMode) {
-            this.title = '';
-            this.description = '';
-            this.deadline = ''; // ← Пусто! Пользователь должен выбрать сам
-            this.reason = '';
+
+    data() {
+        return {
+            title: '',
+            description: '',
+            deadline: '',
+            reason: ''
+        }
+    },
+    watch: {
+        show(newValue) {
+            if (newValue && this.task) {
+                this.title = this.task.title;
+                this.description = this.task.description;
+                this.deadline = new Date(this.task.deadline).toISOString().slice(0, 16);
+                this.reason = '';
+            } else if (newValue && !this.task && !this.returnMode) {
+                this.title = '';
+                this.description = '';
+                this.deadline = '';
+                this.reason = '';
+            }
+        }
+    },
+    methods: {
+        save() {
+            if (this.returnMode) {
+                if (!this.reason.trim()) {
+                    alert('Укажите причину возврата!');
+                    return;
+                }
+                this.$emit('saveReturn', this.reason.trim());
+            } else {
+                const trimmedTitle = this.title.trim();
+                const trimmedDescription = this.description.trim();
+
+                if (!trimmedTitle || !trimmedDescription || !this.deadline) {
+                    alert('Заполните все поля!');
+                    return;
+                }
+
+                this.$emit('save', {
+                    title: trimmedTitle,
+                    description: trimmedDescription,
+                    deadline: new Date(this.deadline)
+                });
+            }
         }
     }
-},
-methods: {
-    save() {
-        if (this.returnMode) {
-            if (!this.reason.trim()) {
-                alert('Укажите причину возврата!');
-                return;
-            }
-            this.$emit('saveReturn', this.reason.trim());
-        } else {
-            const trimmedTitle = this.title.trim();
-            const trimmedDescription = this.description.trim();
-
-            if (!trimmedTitle || !trimmedDescription || !this.deadline) {
-                alert('Заполните все поля!');
-                return;
-            }
-
-            this.$emit('save', {
-                title: trimmedTitle,
-                description: trimmedDescription,
-                deadline: new Date(this.deadline)
-            });
-        }
-    }
-}
 })
 
 new Vue({
@@ -176,142 +179,145 @@ new Vue({
             />
         </div>
     `,
-    data:{
-    planned: [],
-        inProgress: [],
-    testing: [],
-    completed: [],
+    data() {
+        return {
+            planned: [],
+            inProgress: [],
+            testing: [],
+            completed: [],
+            returnReason: '',
 
-    columns: [
-    { id: 'planned', title: 'Запланированные задачи', max: 3 },
-    { id: 'inProgress', title: 'Задачи в работе', max: 5 },
-    { id: 'testing', title: 'Тестирование', max: null },
-    { id: 'completed', title: 'Выполненные задачи', max: null }
-],
+            columns: [
+                { id: 'planned', title: 'Запланированные задачи', max: 3 },
+                { id: 'inProgress', title: 'Задачи в работе', max: 5 },
+                { id: 'testing', title: 'Тестирование', max: null },
+                { id: 'completed', title: 'Выполненные задачи', max: null }
+            ],
 
-    showAddModal: false,
-    showEditModal: false,
-    showReturnModal: false,
-    editingTask: null,
-    returningTaskId: null,
-    currentColumn: null
-},
-methods: {
-    getTasks(columnId) {
-        return this[columnId];
-    },
-
-    loadTasks() {
-        const saved = localStorage.getItem('kanbanTasks');
-        if (saved) {
-            const data = JSON.parse(saved);
-            this.planned = data.planned || [];
-            this.inProgress = data.inProgress || [];
-            this.testing = data.testing || [];
-            this.completed = data.completed || [];
+            showAddModal: false,
+            showEditModal: false,
+            showReturnModal: false,
+            editingTask: null,
+            returningTaskId: null,
+            currentColumn: null
         }
     },
+    methods: {
+        getTasks(columnId) {
+            return this[columnId];
+        },
 
-    saveTasks() {
-        localStorage.setItem('kanbanTasks', JSON.stringify({
-            planned: this.planned,
-            inProgress: this.inProgress,
-            testing: this.testing,
-            completed: this.completed
-        }));
-    },
+        loadTasks() {
+            const saved = localStorage.getItem('kanbanTasks');
+            if (saved) {
+                const data = JSON.parse(saved);
+                this.planned = data.planned || [];
+                this.inProgress = data.inProgress || [];
+                this.testing = data.testing || [];
+                this.completed = data.completed || [];
+            }
+        },
 
-    openAddModal(columnId) {
-        this.currentColumn = columnId;
-        this.showAddModal = true;
-    },
+        saveTasks() {
+            localStorage.setItem('kanbanTasks', JSON.stringify({
+                planned: this.planned,
+                inProgress: this.inProgress,
+                testing: this.testing,
+                completed: this.completed
+            }));
+        },
 
-    closeAddModal() {
-        this.showAddModal = false;
-        this.currentColumn = null;
-    },
+        openAddModal(columnId) {
+            this.currentColumn = columnId;
+            this.showAddModal = true;
+        },
 
-    createTask(taskData) {
-        this[this.currentColumn].push({
-            id: Date.now(),
-            title: taskData.title,
-            description: taskData.description,
-            createdAt: new Date(),
-            deadline: taskData.deadline,
-            updatedAt: null,
-            completedAt: null,
-            returnReason: null,
-            isOverdue: false
-        });
-        this.closeAddModal();
-        this.saveTasks();
-    },
+        closeAddModal() {
+            this.showAddModal = false;
+            this.currentColumn = null;
+        },
 
-    openEditModal(data) {
-        this.editingTask = data.task;
-        this.currentColumn = data.column;
-        this.showEditModal = true;
-    },
+        createTask(taskData) {
+            this[this.currentColumn].push({
+                id: Date.now(),
+                title: taskData.title,
+                description: taskData.description,
+                createdAt: new Date(),
+                deadline: taskData.deadline,
+                updatedAt: null,
+                completedAt: null,
+                returnReason: null,
+                isOverdue: false
+            });
+            this.closeAddModal();
+            this.saveTasks();
+        },
 
-    closeEditModal() {
-        this.showEditModal = false;
-        this.editingTask = null;
-        this.currentColumn = null;
-    },
+        openEditModal(data) {
+            this.editingTask = data.task;
+            this.currentColumn = data.column;
+            this.showEditModal = true;
+        },
 
-    updateTask(taskData) {
-        const task = this[this.currentColumn].find(t => t.id === this.editingTask.id);
-        if (task) {
-            task.title = taskData.title;
-            task.description = taskData.description;
-            task.deadline = taskData.deadline;
+        closeEditModal() {
+            this.showEditModal = false;
+            this.editingTask = null;
+            this.currentColumn = null;
+        },
+
+        updateTask(taskData) {
+            const task = this[this.currentColumn].find(t => t.id === this.editingTask.id);
+            if (task) {
+                task.title = taskData.title;
+                task.description = taskData.description;
+                task.deadline = taskData.deadline;
+                task.updatedAt = new Date();
+            }
+            this.closeEditModal();
+            this.saveTasks();
+        },
+
+        deleteTask(data) {
+            if (confirm('Удалить задачу?')) {
+                this[data.column] = this[data.column].filter(t => t.id !== data.id);
+                this.saveTasks();
+            }
+        },
+
+        moveTask(data) {
+            const index = this[data.from].findIndex(t => t.id === data.task.id);
+            const task = this[data.from].splice(index, 1)[0];
+
+            if (data.to === 'completed') {
+                task.completedAt = new Date();
+                task.isOverdue = task.deadline < new Date();
+            }
+
+            this[data.to].push(task);
+            this.saveTasks();
+        },
+
+        openReturnModal(taskId) {
+            this.returningTaskId = taskId;
+            this.showReturnModal = true;
+        },
+
+        closeReturnModal() {
+            this.showReturnModal = false;
+            this.returningTaskId = null;
+        },
+
+        returnTask(reason) {
+            const index = this.testing.findIndex(t => t.id === this.returningTaskId);
+            const task = this.testing.splice(index, 1)[0];
+            task.returnReason = reason;
             task.updatedAt = new Date();
-        }
-        this.closeEditModal();
-        this.saveTasks();
-    },
-
-    deleteTask(data) {
-        if (confirm('Удалить задачу?')) {
-            this[data.column] = this[data.column].filter(t => t.id !== data.id);
+            this.inProgress.push(task);
+            this.closeReturnModal();
             this.saveTasks();
         }
     },
-
-    moveTask(data) {
-        const index = this[data.from].findIndex(t => t.id === data.task.id);
-        const task = this[data.from].splice(index, 1)[0];
-
-        if (data.to === 'completed') {
-            task.completedAt = new Date();
-            task.isOverdue = task.deadline < new Date();
-        }
-
-        this[data.to].push(task);
-        this.saveTasks();
-    },
-
-    openReturnModal(taskId) {
-        this.returningTaskId = taskId;
-        this.showReturnModal = true;
-    },
-
-    closeReturnModal() {
-        this.showReturnModal = false;
-        this.returningTaskId = null;
-    },
-
-    returnTask(reason) {
-        const index = this.testing.findIndex(t => t.id === this.returningTaskId);
-        const task = this.testing.splice(index, 1)[0];
-        task.returnReason = reason;
-        task.updatedAt = new Date();
-        this.inProgress.push(task);
-        this.closeReturnModal();
-        this.saveTasks();
+    mounted() {
+        this.loadTasks();
     }
-},
-mounted() {
-    this.loadTasks();
-}
 })
